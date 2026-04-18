@@ -1,130 +1,155 @@
 .section .rodata
-fmt: .string "%d" #%D is a string na ,scanf,prinf ke liye 
-fmtspace : .string "%d " # with a space is a string na  # spapce ke sath integers print krne k e lie 
+fmtspace: .string "%d "
+fmtlast: .string "%d\n"
+
 .section .text
-.globl main 
+.globl main
+
 main:
-li t0,0
-addi sp,sp,-64
-sd ra,0(sp)#return address save kia 
-###########################
-la a0,fmt # %d load kre ke liye
-addi a1,sp,8 #n ko store krne ke lie addess dia 
-call scanf
-lw s0,8(sp)#s0 = sizeofarray   
-####################
-addi sp,sp,-4000 # arr ke liye space allocate kiya 
-mv s1,sp      # s1 arr ka base add 
-addi sp,sp,-4000
-mv s2,sp
-addi sp,sp,-4000
-mv s3,sp
-li s4,-1 #top = -1
+    addi sp, sp, -80
+    sd ra, 72(sp)
+    sd s0, 64(sp)
+    sd s1, 56(sp)
+    sd s2, 48(sp)
+    sd s3, 40(sp)
+    sd s4, 32(sp)
+    sd s5, 24(sp)
+    sd s11, 16(sp)
 
-loopread:
-bge t0,s0,logic #i>=n
-la a0,fmt # "%d"
-addi a1,sp,8 #jgah bnayi temprory 
-call scanf
-lw t1,8(sp) # input value load
-slli t2,t0,2 #4i krrhe
-add t3,s1,t2 #arr[i] ka address
-sw t1,0(t3) #arr[i] ki value 
+    mv s5, sp
 
-addi t0,t0,1 #i++;
-beq t0,t0,loopread
+    addi s0, a0, -1
+    ble s0, x0, end
 
+    mv s11, a1
 
-########################
+    slli t0, s0, 2
+    li t1, 3
+    mul t0, t0, t1
+    addi t0, t0, 15
+    andi t0, t0, -16
 
-logic:
-addi t0,s0,-1 #i = n-1
+    sub sp, sp, t0
+
+    mv s1, sp
+    slli t1, s0, 2
+    add s2, s1, t1
+    add s3, s2, t1
+
+    li t0, 0
+read_loop:
+    bge t0, s0, process
+
+    slli t1, t0, 3
+    addi t1, t1, 8
+    add t2, s11, t1
+    ld a0, 0(t2)
+
+    addi sp, sp, -16
+    sd t0, 8(sp)
+    call atoi
+    ld t0, 8(sp)
+    addi sp, sp, 16
+
+    slli t1, t0, 2
+    add t2, s1, t1
+    sw a0, 0(t2)
+
+    addi t0, t0, 1
+    j read_loop
+
+process:
+    addi t0, s0, -1
+    li s4, -1
+
 loop:
-blt t0,x0,print  #i<0 
-blt s4,x0,emptystack# agar stack empty 
-slli t1,t0,2
-add t2,s1,t1
-lw t3,0(t2)## arr[i] load krne ke lie 
-slli t4,s4,2
-add t5,s3,t4
-lw t6,0(t5)
-slli t7,t6,2
-add t8,s1,t7
-lw t9,0(t8)
+    blt t0, x0, print
 
-blt t3,t9,smallercase  # arr[i] < arr[op]
-######################
-elseoop:
-blt s4,x0,afterpop #empty stack
-slli t1,t0,2
-add t2,s1,t1
-lw t3,0(t2)#arr[i]
-slli t4,s4,2
-add t5,s3,t4
-lw t6,0(t5)#arr[stack[top]]
-slli t7,t6,2
-add t8,s1,t7
-lw t9,0(t8)
+    slli t1, t0, 2
+    add t1, s1, t1
+    lw t3, 0(t1)
 
-blt t3,t9,afterpop
-addi s4,s4,-1
-beq t0,t0,elseoop
-#############
-afterpop:
-slli t1,t0,2
-add t2,s2,t1 #ans[i] ka addd
-blt s4,x0,neg #age stack empty
-#ans[i] = stack[top]
-slli t3, s4, 2
-add t4, s3, t3
-lw t5, 0(t4)
-sw t5, 0(t2)
-beq t0,t0,push
+pop_loop:
+    blt s4, x0, assign
 
-neg:
-li t6, -1                  # -1 assign
-sw t6, 0(t2)
-beq t0,t0,push
-###################
-emptystack:
-slli t1, t0, 2
-add t2, s2, t1
-li t3, -1# ans[i] = -1
-sw t3, 0(t2)
-beq t0,t0,push
+    slli t1, s4, 2
+    add t1, s3, t1
+    lw t6, 0(t1)
 
+    slli t1, t6, 2
+    add t1, s1, t1
+    lw t2, 0(t1)
 
+    bgt t2, t3, assign
 
+    addi s4, s4, -1
+    j pop_loop
 
-smallercase:
-slli t1, t0, 2
-add t2, s2, t1
-slli t3, s4, 2
-add t4, s3, t3
-lw t5, 0(t4)
-sw t5, 0(t2) #ans[i] = stak[top]
-###################
+assign:
+    slli t1, t0, 2
+    add t2, s2, t1
+
+    blt s4, x0, no_greater
+
+    slli t1, s4, 2
+    add t1, s3, t1
+    lw t5, 0(t1)
+    sw t5, 0(t2)
+    j push
+
+no_greater:
+    li t5, -1
+    sw t5, 0(t2)
+
 push:
-addi s4,s4,1
-slli t1, s4, 2
-add t2, s3, t1
-sw t0, 0(t2) # stack[top] = i
-addi t0, t0, -1# i--
-beq t0,t0,loop
-############
+    addi s4, s4, 1
+    slli t1, s4, 2
+    add t1, s3, t1
+    sw t0, 0(t1)
+
+    addi t0, t0, -1
+    j loop
+
 print:
-li t0,0
-printlop:
-bge t0, s0, end# agar i >= n , stop
-slli t1, t0, 2
-add t2, s2, t1
-lw a1, 0(t2)  # ans[i]
-la a0, fmtspace
-call printf # print
-addi t0, t0, 1# i++
-beq t0,t0, printlop
-##################
+    li t0, 0
+
+print_loop:
+    bge t0, s0, end
+
+    slli t1, t0, 2
+    add t1, s2, t1
+    lw a1, 0(t1)
+
+    addi t2, s0, -1
+    beq t0, t2, last
+
+    la a0, fmtspace
+    j do_print
+
+last:
+    la a0, fmtlast
+
+do_print:
+    addi sp, sp, -16
+    sd t0, 8(sp)
+    call printf
+    ld t0, 8(sp)
+    addi sp, sp, 16
+
+    addi t0, t0, 1
+    j print_loop
+
 end:
-ld ra, 12000(sp)#add restore  
-addi sp, sp, 12064
-ret
+    mv sp, s5
+
+    ld ra, 72(sp)
+    ld s0, 64(sp)
+    ld s1, 56(sp)
+    ld s2, 48(sp)
+    ld s3, 40(sp)
+    ld s4, 32(sp)
+    ld s5, 24(sp)
+    ld s11, 16(sp)
+
+    addi sp, sp, 80
+    ret

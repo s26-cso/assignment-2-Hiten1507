@@ -1,34 +1,42 @@
 #include <stdio.h>
 #include <dlfcn.h>
-#include <string.h>
-typedef int (*fptr)(int,int);
 
-int main(){
-    char op[10];
-    int x,y;
-    while(1){
-    scanf("%s",op);
-    if (strcmp(op, "exit") == 0) break;
-    scanf("%d %d",&x,&y);
+int main() {
+    char op[6];
+    int a, b;
 
-    char libname[20];
-    sprintf(libname,"./lib%s.so",op);
+    while (1) {
+        int ret = scanf("%5s %d %d", op, &a, &b);
+        if (ret == EOF) {
+            break;
+        }
+        if (ret != 3) {
+            continue;
+        }
 
-    void* handle = dlopen(libname,RTLD_LAZY);
-    if(handle==NULL){
-        printf("Error\n");
-        continue;
-    }
+        char libname[20];
+        sprintf(libname, "./lib%s.so", op);
 
-    fptr func = (fptr)dlsym(handle,op);
-    if(func==NULL){
-        printf("Error\n");
+        void *handle = dlopen(libname, RTLD_LAZY);
+        if (!handle) {
+            printf("Error\n");
+            continue;
+        }
+
+        int (*func)(int, int);
+        func = (int (*)(int,int)) dlsym(handle, op);
+
+        if (!func) {
+            dlclose(handle);
+            printf("Error\n");
+            continue;
+        }
+
+        int result = func(a, b);
+        printf("%d\n", result);
+
         dlclose(handle);
-        continue;
     }
 
-    int ans  = func(x,y);
-    printf("%d\n",ans);
-    dlclose(handle);
-
-}}
+    return 0;
+}

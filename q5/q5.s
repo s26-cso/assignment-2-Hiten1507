@@ -1,60 +1,93 @@
 .section .rodata
-fmt: .string "%s"
-yes: .string "Yes\n"
-no : .string "No\n"
+filename: .string "input.txt"
+yes:      .string "Yes\n"
+no:       .string "No\n"
 
-.section .bss # used to allocate memory withiut any value
-arr : .space 10000
 .section .text
-
 .globl main
+
 main:
-addi sp,sp,-16
-sd ra,0(sp)
-li s0,1 # ans = 1
-la a0,fmt
-la a1,arr
-call scanf # scanf("%s)
-la a0,arr
-call strlen
-mv s1,a0   #s1 = x
-li s2,0 #left  = 0
-addi s3,s1,-1 #right = x-1
-##################################
+    addi sp, sp, -64
+    sd ra, 56(sp)
+    sd s0, 48(sp)
+    sd s1, 40(sp)
+    sd s2, 32(sp)
+    sd s3, 24(sp)
+
+    # 1. Open file
+    la a0, filename
+    li a1, 0
+    call open
+    mv s0, a0
+
+    li t0, -1
+    beq s0, t0, printno
+
+    # 2. get file size
+    mv a0, s0
+    li a1, 0
+    li a2, 2
+    call lseek
+    mv s1, a0
+
+    # 3. pointers
+    li s2, 0
+    addi s3, s1, -1
+
 loop:
-bgt s2,s3,done # l>r->exit loop
+    bge s2, s3, printyes
 
+    # read left
+    mv a0, s0
+    mv a1, s2
+    li a2, 0
+    call lseek
 
+    mv a0, s0
+    addi a1, sp, 8
+    li a2, 1
+    call read
+    lbu t2, 8(sp)
 
-la t0,arr
-add t1,t0,s2
-lb t2,0(t1) #load arr[left]
+    # read right
+    mv a0, s0
+    mv a1, s3
+    li a2, 0
+    call lseek
 
+    mv a0, s0
+    addi a1, sp, 8
+    li a2, 1
+    call read
+    lbu t4, 8(sp)
 
-add t3,t0,s3
-lb t4,0(t3) # load arr[right]
+    bne t2, t4, printno
 
-bne t2,t4,not
-addi s2,s2,1 # left++;
-addi s3,s3,-1 # right --;
-beq x0,x0,loop;
-########################
-not:
-li s0,2
-beq x0,x0,done
-#############
-done:
-li t0 , 2
-beq s0,t0,printno #ans==2 print no
-la a0,yes
-call printf
-beq x0,x0,end
-#########
+    addi s2, s2, 1
+    addi s3, s3, -1
+    j loop
+
+printyes:
+    la a0, yes
+    call printf
+    j end
+
 printno:
-la a0,no
-call printf
+    la a0, no
+    call printf
 
 end:
-ld ra,0(sp)
-addi sp,sp,16
-ret
+    li t0, -1
+    beq s0, t0, skip_close
+    mv a0, s0
+    call close
+
+skip_close:
+    ld ra, 56(sp)
+    ld s0, 48(sp)
+    ld s1, 40(sp)
+    ld s2, 32(sp)
+    ld s3, 24(sp)
+    addi sp, sp, 64
+    li a0, 0
+    ret

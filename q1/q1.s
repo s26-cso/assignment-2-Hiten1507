@@ -1,140 +1,115 @@
-#0 - > data 8-> left , 16 -> right 
-#  root -> x10,n -> x11,temp-> x5,x6    
+.globl make_node
+.globl insert
+.globl get
+.globl getAtMost
 
+make_node:
+    addi sp, sp, -16
+    sd x1, 8(sp)
+    sd x11, 0(sp)
 
-newnode:
-li a0,24
-call malloc
-mv x10,a0
-sd x11,0(x10) # node->data = n
-sd x0,8(x10) #node->left = NULL;
-sd x0,16(x10) #node->right = NULL;
-jalr x0,0(x1) #
-###########################
+    li a0, 24
+    call malloc
+
+    ld x11, 0(sp)
+    sw x11, 0(a0)
+    sd x0, 8(a0)
+    sd x0, 16(a0)
+
+    mv x10, a0
+    ld x1, 8(sp)
+    addi sp, sp, 16
+    ret
 
 insert:
+    addi sp, sp, -24
+    sd x1, 16(sp)
+    sd x10, 8(sp)
+    sd x11, 0(sp)
 
-addi sp,sp,-24 #space bnali
-sd x1,16(sp) # save return add
-sd x10,8(sp) # save root
-sd x11,0(sp) # save n
-beq x10,x0,l1 # root==NULL
-ld x5,0(x10) # root->data
-blt x11,x5,left # if(n<root->data)
-bgt x11,x5,right # if(n>root->data)
-beq x0,x0,l2
+    beq x10, x0, ins_new
 
+    lw x5, 0(x10)
+    blt x11, x5, ins_left
+    bgt x11, x5, ins_right
+    j ins_done
 
+ins_new:
+    ld x11, 0(sp)
+    mv x10, x11
+    call make_node
+    j ins_exit
 
-l1:
-ld x11,0(sp)
-mv x10,x0
-jal x1,newnode
-beq x0,x0,exit
+ins_left:
+    ld x10, 8(x10)
+    ld x11, 0(sp)
+    call insert
+    mv x6, x10
+    ld x10, 8(sp)
+    sd x6, 8(x10)
+    j ins_done
 
-left:
-ld x6,8(x10)
-mv x10,x6
-ld x11,0(sp)
-jal x1,insert
+ins_right:
+    ld x10, 16(x10)
+    ld x11, 0(sp)
+    call insert
+    mv x6, x10
+    ld x10, 8(sp)
+    sd x6, 16(x10)
+    j ins_done
 
-ld x6,8(sp)
-sd x10,8(x6)
-beq x0,x0,l2
+ins_done:
+    ld x10, 8(sp)
 
+ins_exit:
+    ld x1, 16(sp)
+    addi sp, sp, 24
+    ret
 
-right:
-ld x6,16(x10)
-mv x10,x6
-ld x11,0(sp)
-jal x1,insert   
+get:
+    beq x10, x0, get_null
 
-ld x6,8(sp)
-sd x10,16(x6)
-beq x0,x0,l2
+    lw x5, 0(x10)
+    beq x5, x11, get_found
+    blt x11, x5, get_left
 
-l2:
-ld x10,8(sp)
+    ld x10, 16(x10)
+    j get
 
-exit:
-ld x1, 16(sp)      # return address restore
-addi sp, sp, 24   # stack free
-jalr x0, 0(x1)    # return
-######################################
-search:
-addi sp,sp,-16
-sd x1,8(sp)
-sd x11,0(sp)
+get_left:
+    ld x10, 8(x10)
+    j get
 
-beq x10,x0,NULL # root==NULL
-ld x5 , 0(x10) # x5 = root->data
-beq x5,x11,found # root->data==n->return current node
-blt x11,x5,goleft # n<root->data -> left me jao 
-bgt x11,x5,goright #whi right me jao 
+get_found:
+    ret
 
-goleft:
-ld x10,8(x10) #x10 = root->left
-ld x11,0(sp)
-jal x1,search
-beq x0,x0,retsearch
+get_null:
+    li x10, 0
+    ret
 
-goright:
-ld x10,16(x10)
-ld x11,0(sp)
-jal x1,search
-beq x0,x0,retsearch
+getAtMost:
+    li x7, -1
 
-found:
-beq x0,x0,retsearch
+loop:
+    beq x11, x0, done
 
-NULL:
-li x10,0 #x10 = NULL
+    lw x5, 0(x11)
 
-retsearch:
-ld x1,8(sp)
-addi sp,sp,16
-jalr x0,0(x1)
-# return NULL;
-##########################
-max:
-addi sp,sp,-24
-sd x1,16(sp)# ret add
-sd x10,8(sp) #root pointr
-sd x11,0(sp) # val
+    beq x5, x10, exact
+    bgt x5, x10, go_left
 
-beq x10,x0,NULLCASE # return krna hai -1 not 0 
+    mv x7, x5
+    ld x11, 16(x11)
+    j loop
 
-ld x5,0(x10) #x5 = root->data
+go_left:
+    ld x11, 8(x11)
+    j loop
 
-bgt x5,x11,leftjao
+exact:
+    mv x10, x5
+    ret
 
-# candidate = root->val
-ld x6,16(x10)# root->right
-mv x10,x6
-ld x11,0(sp)
-jal x1,max
-
-mv x6,x10 #x6 = ans from right
-li x5,-1
-beq x6,x5,uroot
-mv x10,x6
-beq x0,x0,exitmax
-
-uroot:
-ld x10,8(sp)
-ld x10,0(x10) #root->data
-beq x0,x0,exitmax
-
-leftjao:
-ld x10,8(x10)
-ld x11,0(sp)
-jal x1,max #rec call: max(left,n)
-beq x0,x0,exitmax
-
-NULLCASE:
-li x10,-1
-
-exitmax:
-ld x1,16(sp)
-addi sp,sp,24
-jalr x0,0(x1)
+done:
+    mv x10, x7
+    ret

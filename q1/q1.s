@@ -1,3 +1,4 @@
+.text 
 .globl make_node
 .globl insert
 .globl get
